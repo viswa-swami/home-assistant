@@ -6,12 +6,11 @@ https://home-assistant.io/components/camera.arlo/
 """
 import asyncio
 import logging
-
 import voluptuous as vol
 
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_aiohttp_proxy_stream
-from homeassistant.components.arlo import DEFAULT_BRAND, DATA_ARLO
+from homeassistant.components.arlo import DEFAULT_BRAND, DATA_ARLO, PROPS_ARLO
 from homeassistant.components.camera import Camera, PLATFORM_SCHEMA
 from homeassistant.components.ffmpeg import DATA_FFMPEG
 
@@ -49,8 +48,9 @@ class ArloCam(Camera):
         """Initialize an Arlo camera."""
         super().__init__()
         self._camera = camera
+        self._arloprops = hass.data[PROPS_ARLO]
         self._name = self._camera.name
-        self._motion_status = False
+        self._device_info = device_info
         self._ffmpeg = hass.data[DATA_FFMPEG]
         self._ffmpeg_arguments = device_info.get(CONF_FFMPEG_ARGUMENTS)
 
@@ -96,9 +96,19 @@ class ArloCam(Camera):
         return True
 
     @property
+    def battery_level(self):
+        """Camera battery level."""
+        return self._arloprops.get_battery_level(self._camera.device_id)
+
+    @property
     def motion_detection_enabled(self):
         """Camera Motion Detection Status."""
-        return self._motion_status
+        return self._arloprops._motion_status
+
+    @property
+    def signal_strength(self):
+        """Camera Signal strength."""
+        return self._arloprops.get_signal_strength(self._camera.device_id)
 
     def set_base_station_mode(self, mode):
         """Set the mode in the base station."""
@@ -115,10 +125,8 @@ class ArloCam(Camera):
 
     def enable_motion_detection(self):
         """Enable the Motion detection in base station (Arm)."""
-        self._motion_status = True
         self.set_base_station_mode(ARLO_MODE_ARMED)
 
     def disable_motion_detection(self):
         """Disable the motion detection in base station (Disarm)."""
-        self._motion_status = False
         self.set_base_station_mode(ARLO_MODE_DISARMED)

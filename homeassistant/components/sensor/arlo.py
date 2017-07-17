@@ -11,7 +11,7 @@ import voluptuous as vol
 
 from homeassistant.helpers import config_validation as cv
 from homeassistant.components.arlo import (
-    CONF_ATTRIBUTION, DEFAULT_BRAND, DATA_ARLO)
+    CONF_ATTRIBUTION, DEFAULT_BRAND, DATA_ARLO, PROPS_ARLO)
 
 from homeassistant.const import (
     ATTR_ATTRIBUTION, CONF_MONITORED_CONDITIONS, STATE_UNKNOWN)
@@ -24,6 +24,8 @@ _LOGGER = logging.getLogger(__name__)
 
 # sensor_type [ description, unit, icon ]
 SENSOR_TYPES = {
+    'signal_strength': ['Signal', None, 'signal'],
+    'battery': ['Battery', '%', 'battery'],
     'last_capture': ['Last', None, 'run-fast'],
     'total_cameras': ['Arlo Cameras', None, 'video'],
     'captured_today': ['Captured Today', None, 'file-video'],
@@ -69,6 +71,7 @@ class ArloSensor(Entity):
         super().__init__()
         self._name = name
         self._hass = hass
+        self._arloprops = hass.data.get(PROPS_ARLO)
         self._data = device
         self._sensor_type = sensor_type
         self._state = None
@@ -98,7 +101,13 @@ class ArloSensor(Entity):
         """Get the latest data and updates the state."""
         self._data.update()
 
-        if self._sensor_type == 'total_cameras':
+        if self._sensor_type == 'signal_strength':
+            self._state = self._arloprops.get_signal_strength(self._data.device_id)
+
+        elif self._sensor_type == 'battery':
+            self._state = self._arloprops.get_battery_level(self._data.device_id)
+
+        elif self._sensor_type == 'total_cameras':
             self._state = len(self._data.cameras)
 
         elif self._sensor_type == 'captured_today':
